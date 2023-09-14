@@ -1,0 +1,262 @@
+SET SQL_SAFE_UPDATES = 0;
+-- select database
+USE intro_sql;
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- SHOWING DATA
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- select several columns from a table
+SELECT id, country, company_name FROM customers;
+-- select all columns from a table
+SELECT * FROM customers;
+-- select a column and change its name
+SELECT company_name AS 'Company Name' FROM customers;
+-- select without duplicates
+SELECT DISTINCT country FROM customers;
+-- ------------------------------------------------------WHERE--
+-- filtering
+SELECT company_name FROM customers WHERE country = 'Germany';
+--
+SELECT id, order_date, shipper,freight FROM orders 
+WHERE freight >= 100;
+-- multiple filters
+SELECT id, order_date, shipper, freight FROM orders 
+WHERE freight >= 100 AND shipper = 'United Package';
+--
+SELECT id, order_date, shipper, freight FROM orders 
+WHERE shipper = 'Federal Shipping' OR shipper = 'United Package';
+--
+SELECT * from pytania
+WHERE (kategoria = "programowanie" OR kategoria = "systemy operacyjne i sieci" ) AND rok = 2012;
+--
+-- top X results
+SELECT TOP 1 cena from ksiazki;
+--
+-- ------------------------------------------------------ BETWEEN --
+SELECT id, order_date, shipper, freight FROM orders 
+WHERE order_date >= '2019-01-01';
+--
+SELECT id, order_date, shipper, freight FROM orders 
+WHERE order_date BETWEEN '2019-01-01'AND '2020-01-01';
+-- ------------------------------------------------------ORDER BY--
+SELECT id, country, company_name FROM customers
+ORDER BY company_name ASC;
+-- multiple columns
+SELECT id, country, company_name FROM customers
+ORDER BY company_name DESC, country ASC;
+-- CUSTOM ORDER
+SELECT * FROM zamowienia
+ORDER BY CASE 
+     WHEN status = "wyslano" THEN 1
+     WHEN status = "oczekiwanie" THEN 2
+     END ASC;
+--
+-- defining the limit of results
+SELECT * from ksiazki
+ORDER BY cena DESC LIMIT 1;
+--
+-- ------------------------------------------------------GROUP BY--
+SELECT  country FROM customers
+GROUP BY country;
+-- counting items from one group
+--  SUM, MIN, MAX, etc.
+SELECT  category, SUM(units_in_stock) from products
+GROUP BY category;
+--
+SELECT MIN(cena)FROM ksiazki;
+-- HAVING--
+-- grouping with a condition
+SELECT  category, SUM(units_in_stock) AS 'sum of items in stock' from products
+GROUP BY category
+HAVING SUM(units_in_stock) < 300;
+--
+SELECT country.name, SUM(city.population) AS overallpopulation FROM country,city
+WHERE city.CountryCode = country.code AND city.population >=100000 AND country.continent = "South America"
+GROUP BY country.name ORDER BY overallpopulation DESC;
+
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- CREATING A DATABASE
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+CREATE DATABASE myDataBase;
+
+USE myDataBase;
+-- CREATING TABLES
+CREATE TABLE employees(
+id INT NOT NULL auto_increment,  -- must not be empty, fills up automatically
+firstName VARCHAR(255),
+lastName VARCHAR(255),
+telephoneNumber INT(10),
+PRIMARY KEY(id));
+
+CREATE TABLE customers(
+id INT NOT NULL auto_increment,  -- must not be empty, fills up automatically
+companyName VARCHAR(255),
+country VARCHAR(255),
+empId INT,
+PRIMARY KEY(id),
+FOREIGN KEY(empId) REFERENCES employees(id));
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- DELETING DATA --
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- deleting a single cell
+UPDATE klienci SET nazwisko = ""
+WHERE nazwisko = 'Kowalski';
+-- deleting one or many records from the table
+DELETE FROM klienci
+WHERE idklienta = 10;
+-- deleting all records from the table, but not the table itself
+TRUNCATE table customers;
+-- deleting sth from a database structure
+DROP DATABASE myDataBase; -- IFEXISTS jeśli istnieje
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- INSERTING DATA --
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- 1 way
+INSERT INTO employees(firstName, lastName, telephoneNumber)
+VALUES ('John', 'Doe', 555123456), ('Jane', 'Smith', 555987654), ('Michael', 'Johnson', 555555555);
+SELECT * FROM employees;
+-- 2 way
+INSERT INTO customers
+VALUES (default, 'ABC Corporation', 'USA',1),(default, 'XYZ Company', 'Germany',2),(default, 'QWE Corporation', 'Poland',3); -- NULL/default
+SELECT * FROM customers;
+--
+INSERT INTO zamowienia
+VALUES(default, (SELECT idklienta FROM klienci WHERE imie = "Artur" AND nazwisko = "Rutkowski"), (SELECT idksiazki FROM ksiazki WHERE tytul = "HTML5. Tworzenie witryn"), (SELECT CURDATE()), "oczekiwanie");
+--
+INSERT INTO klienci SET idklienta = NULL, imie = 'Jan', nazwisko = "Kowalski", miejscowosc = "Słupsk";
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- JOINS --
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- INNER JOIN matching values in both tables
+SELECT employees.first_name,employees.last_name,employees.dept, customers.company_name 
+FROM employees
+INNER JOIN customers ON employees.id = customers.employee_id;
+-- joining two unrelated tables
+SELECT klienci.imie_klienta, klienci.nazwisko_klienta, sum(dane_wypozyczen.ilosc_dob * dane_wypozyczen.cena_doba) as "wypozyczenia_suma(PLN)" FROM wypozyczenia
+INNER JOIN klienci ON wypozyczenia.id_klienta = klienci.id_klienta
+INNER JOIN dane_wypozyczen ON dane_wypozyczen.id_wypozyczenia = wypozyczenia.id_wypozyczenia
+GROUP BY klienci.id_klienta;
+-- LEFT JOIN returns all records from left table and matches records from right table (even if the match is empty)
+SELECT employees.first_name,employees.last_name,employees.dept, customers.company_name 
+FROM employees
+LEFT JOIN customers ON employees.id = customers.employee_id;
+-- RIGHT JOIN returns all records from right table and matches records from left table (even if the match is empty)
+SELECT e.first_name,e.last_name,e.dept, c.company_name 
+FROM employees AS e
+RIGHT JOIN customers AS c ON e.id = c.employee_id
+WHERE e.first_name IS NULL; -- showing olny empty values
+-- OUTER JOIN all values from both tables
+SELECT e.first_name,e.last_name,e.dept, c.company_name, COALESCE(e.id, c.employee_id)
+FROM employees e
+RIGHT JOIN customers c ON e.id = c.employee_id;
+-- NATURAL JOIN when we havbe the same keyes in both tables (we dont have to use ON)
+-- more than 1 join
+SELECT k.imie, k.nazwisko, z.idzamowienia, z.data, z.status, z.idksiazki, ks.tytul 
+FROM (klienci AS k JOIN zamowienia as z) JOIN ksiazki as ks 
+ON k.idklienta = z.idklienta AND ks.idksiazki = z.idksiazki
+WHERE k.nazwisko = "Rutkowski"
+ORDER BY data ASC;
+-- SELF JOIN
+SELECT p.imie_pracownika, p.nazwisko_pracownika, s.nazwisko_pracownika as nazwisko_szefa FROM pracownicy AS p
+JOIN pracownicy AS S ON p.szef_id = s.id_pracownika;
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- SEARCHING TEXT VALUES --
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- ------------------------------------------------------ LIKE--
+SELECT * FROM pytania
+WHERE tresc LIKE "Jak%"; -- % - any text
+--
+SELECT * FROM pytania
+WHERE tresc LIKE "%C++%"
+OR odpa LIKE "%C++%";
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- UPDATE --
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+UPDATE klienci SET nazwisko = "Psikuta"
+WHERE idklienta = 4;
+-- rounding the result
+UPDATE ksiazki SET cena = ROUND(1.1*cena,2);
+--
+UPDATE ksiazki SET cena = cena - 10
+WHERE cena = (SELECT MAX(cena) FROM ksiazki);
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- TEXT EDITING --
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- trimming (trim, ltrim, rtrim)
+SELECT trim(imie_klienta) FROM klienci;
+-- replacing a certain character (variable, what we want to replace, what we want instead)
+SELECT replace(telefon_klienta, "-", " ") FROM klienci;
+-- character length
+SELECT length(telefon_klienta) FROM klienci;
+-- showing only certain num of characters (left/right)
+SELECT right(imie_klienta,2) FROM klienci;
+-- showing certain characters in a position (value, starting position, end position)
+SELECT substring(imie_klienta,2,4) FROM klienci;
+-- repairing data
+UPDATE klienci SET telefon_klienta = replace(telefon_klienta, "-", " "), telefon_klienta = trim(telefon_klienta);
+-- certain character position
+SELECT instr(email_klienta,"@") FROM klienci;
+-- looking for a pattern
+SELECT DISTINCT substring(email_klienta,(instr(email_klienta,"@")+1)) AS "domeny" FROM klienci;
+-- concatenate
+SELECT concat(imie_klienta," ", nazwisko_klienta) from klienci;
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- CONDITIONAL SELECTS --
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- IF
+SELECT concat(
+IF(plec = "M","Pan","Pani")," ", imie_klienta," ", nazwisko_klienta) as zwrot FROM klienci
+Order by zwrot ASC;
+-- CASE
+SELECT concat(
+CASE WHEN plec = "M" THEN "Pan" ELSE "Pani" END," ", imie_klienta," ", nazwisko_klienta) as zwrot FROM klienci
+Order by zwrot ASC;
+--
+SELECT concat(upper(samochody.marka), " ", upper(samochody.model)) as nazwa_auta, concat(COUNT(dane_wypozyczen.id_wypozyczenia)," ", IF(COUNT(dane_wypozyczen.id_wypozyczenia)=1,"raz","razy")) as ilosc_wypozyczen FROM samochody
+LEFT JOIN dane_wypozyczen ON samochody.id_samochodu = dane_wypozyczen.id_samochodu
+GROUP BY samochody.id_samochodu
+ORDER BY ilosc_wypozyczen DESC, nazwa_auta DESC ;
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- UNION, INTERSECT, EXCEPT --
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- UNION - joining two tables into one (no duplicates)
+SELECT miasto_klienta FROM klienci
+UNION
+SELECT miasto_pracownika FROM pracownicy;
+-- UNION ALL - joining two tables into one (with duplicates)
+SELECT miasto_klienta FROM klienci
+UNION ALL
+SELECT miasto_pracownika FROM pracownicy;
+-- INTERSECT - only shared records
+SELECT miasto_klienta FROM klienci
+INTERSECT
+SELECT miasto_pracownika FROM pracownicy;
+-- EXCEPT - only unique (minus those in the second table; depends which one is first)
+SELECT miasto_klienta FROM klienci
+EXCEPT
+SELECT miasto_pracownika FROM pracownicy;
+-- union with more than two columns
+SELECT klienci.imie_klienta as imie, klienci.nazwisko_klienta as nazwisko, "klient"  as rola FROM klienci
+INNER JOIN wypozyczenia ON wypozyczenia.id_klienta = klienci.id_klienta
+INNER JOIN dane_wypozyczen ON wypozyczenia.id_wypozyczenia = dane_wypozyczen.id_wypozyczenia
+INNER JOIN samochody ON dane_wypozyczen.id_samochodu = samochody.id_samochodu
+WHERE samochody.marka = "Audi" AND samochody.model = "A4"
+UNION
+SELECT pracownicy.imie_pracownika, pracownicy.nazwisko_pracownika, "pracownik" FROM pracownicy
+INNER JOIN wypozyczenia ON wypozyczenia.id_pracownika = pracownicy.id_pracownika
+INNER JOIN dane_wypozyczen ON wypozyczenia.id_wypozyczenia = dane_wypozyczen.id_wypozyczenia
+INNER JOIN samochody ON dane_wypozyczen.id_samochodu = samochody.id_samochodu
+WHERE samochody.marka = "Audi" AND samochody.model = "A4";
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- VARIABLES --
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+SET @najnizsza_cena = (SELECT MIN(cena_katalogowa) FROM samochody);
+SELECT marka, model FROM samochody
+WHERE cena_katalogowa = @najnizsza_cena;
+-- ----------NESTED QUARIES
+SELECT COUNT(*) as ilosc_wypozyczen from (SELECT id_wypozyczenia from dane_wypozyczen
+GROUP BY id_wypozyczenia
+HAVING COUNT(id_wypozyczenia) >=2) as podz;
+
+-- ---- NOT IN
+SELECT samochody.id_samochodu from samochody
+WHERE  samochody.id_samochodu NOT IN (SELECT id_samochodu from dane_wypozyczen where id_samochodu is not null);
