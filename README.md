@@ -1,0 +1,1 @@
+This repository contains my notes from an online SQL course. It also includes essential SQL queries for quick reference, making it a handy resource for anyone looking to learn or refresh their SQL skills.
